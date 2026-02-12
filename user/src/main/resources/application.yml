@@ -1,0 +1,11 @@
+server:
+  port: 8080 # Port for the client application
+spring:
+  application:
+    name: user
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/ # Address of the Eureka Server
