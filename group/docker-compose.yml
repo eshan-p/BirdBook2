@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  group-mongodb:
+    image: mongo:7.0
+    container_name: group-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - group-mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  group-mongo-data:
