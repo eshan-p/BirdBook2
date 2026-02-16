@@ -1,0 +1,13 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: bird
+  mongodb:
+    uri: mongodb://localhost:27019/birds_db
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/ # Address of the Eureka Server

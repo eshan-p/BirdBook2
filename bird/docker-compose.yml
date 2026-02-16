@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  bird-mongodb:
+    image: mongo:latest
+    container_name: bird-mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_DATABASE: birds_db
+    volumes:
+      - bird-data:/data/db
+
+volumes:
+  bird-data:
