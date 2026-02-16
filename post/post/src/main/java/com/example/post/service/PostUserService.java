@@ -13,11 +13,12 @@ public class PostUserService {
     public PostUserService (UserService uService){
         this.uService = uService;
     }
-    public PostUser buildPostUser(ObjectId userId){
+
+    public PostUser buildPostUser(String userId){
         PostUser temp = new PostUser();
         temp.setUserId(userId);
-        temp.setUsername(uService.getUserById(userId).getUsername());
-        temp.setProfilePic(uService.getUserById(userId).getProfilePic());
+        temp.setUsername(uService.getUserById(String.valueOf(userId)).getUsername());
+        temp.setProfilePic(uService.getUserById(String.valueOf(userId)).getProfilePic());
         return temp;
     }
 

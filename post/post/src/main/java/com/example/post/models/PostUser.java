@@ -1,8 +1,5 @@
 package com.example.post.models;
 
-import com.example.post.serializers.ObjectIdDeserializer;
-import com.example.post.serializers.ObjectIdSerializer;
-import org.bson.types.ObjectId;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,9 +8,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 public class PostUser {
 
-    @JsonSerialize(using = ObjectIdSerializer.class)
-    @JsonDeserialize(using = ObjectIdDeserializer.class)
-    private ObjectId userId;
+
+    private String userId;
 
     private String username;
 
@@ -21,22 +17,22 @@ public class PostUser {
 
     public PostUser() {}
 
-    public PostUser(ObjectId userId, String username) {
+    public PostUser(String userId, String username) {
         this.userId = userId;
         this.username = username;
     }
 
-    public PostUser(ObjectId userId, String username, String profilePic) {
+    public PostUser(String userId, String username, String profilePic) {
         this.userId = userId;
         this.username = username;
         this.profilePic = profilePic;
     }
 
-    public ObjectId getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(ObjectId userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

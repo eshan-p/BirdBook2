@@ -3,6 +3,7 @@ package com.example.post.service;
 
 import com.example.post.models.Comment;
 import com.example.post.models.Post;
+import com.example.post.models.User;
 import com.example.post.repository.PostDAO;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -23,12 +24,12 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private final PostDAO sDAO;
-    //private final UserDAO userDAO;
+    private final UserService userService;
     private final MongoTemplate mongoTemplate;
 
-    public PostService(PostDAO sDAO, UserDAO userDAO, MongoTemplate mongoTemplate) {
+    public PostService(PostDAO sDAO, UserService userService, MongoTemplate mongoTemplate) {
         this.sDAO = sDAO;
-        this.userDAO = userDAO;
+        this.userService = userService;
         this.mongoTemplate = mongoTemplate;
     }
 
@@ -123,17 +124,10 @@ public class PostService {
 
         Post savedPost = sDAO.save(newPost);
 
-        ObjectId userId = savedPost.getUser().getUserId();
+        String userId = savedPost.getUser().getUserId();   // should be String
+        String postId = savedPost.getId().toHexString();
 
-        User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        ObjectId[] currentPosts = user.getPosts();
-        ObjectId[] updatedPosts = Arrays.copyOf(currentPosts, currentPosts.length + 1);
-
-        updatedPosts[currentPosts.length] = savedPost.getId();
-        user.setPosts(updatedPosts);
-
-        userDAO.save(user);
+        userService.addPostToUser(userId, postId);
 
         List<Post> enriched = postsWithBirdLookup(List.of(savedPost));
         return enriched.isEmpty() ? savedPost : enriched.get(0);
@@ -157,8 +151,8 @@ public class PostService {
         }
     }
 
-    public List<Post> getAllPostsByFriends(ObjectId userId) {
-        User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found."));
+    public List<Post> getAllPostsByFriends(String userId) {
+        User user = userService.getUserById(userId);
 
         ObjectId[] friendIds = user.getFriends();
 
@@ -166,7 +160,7 @@ public class PostService {
             return List.of();
         }
 
-        List<User> friends = userDAO.findAllById(List.of(friendIds));
+        List<User> friends = userService.findAllById(List.of(friendIds));
 
         List<ObjectId> allPostIds = new ArrayList<>();
 
@@ -325,7 +319,7 @@ public class PostService {
             return List.of();
         }
         
-        List<User> likers = userDAO.findAllById(likerIds);
+        List<User> likers = userService.findAllById(likerIds);
         
         return likers.stream()
             .map(user -> Map.of(

@@ -46,6 +46,8 @@ public class PostController {
         this.puService = puService;
     }
 
+
+
     @GetMapping
     public List<Post> getAllPosts() {
         return sService.getAllPosts();
@@ -53,7 +55,7 @@ public class PostController {
 
     @GetMapping("/user/{userId}")
     public List<Post> getAllPostsByFriends(@PathVariable ObjectId userId) {
-        return sService.getAllPostsByFriends(userId);
+        return sService.getAllPostsByFriends(String.valueOf(userId));
     }
 
     @GetMapping("/tags")
@@ -82,7 +84,7 @@ public class PostController {
     ) {
         try {
             Post post = objectMapper.readValue(postJson, Post.class);
-            post.setUser(puService.buildPostUser(new ObjectId(userId)));
+            post.setUser(puService.buildPostUser(userId));
 
             Set<ConstraintViolation<Post>> violations = validator.validate(post);
             if (!violations.isEmpty()) {
@@ -129,7 +131,7 @@ public class PostController {
             @RequestBody Comment comment,
             @RequestParam String userId
     ) {
-        comment.setUser(puService.buildPostUser(new ObjectId(userId)));
+        comment.setUser(puService.buildPostUser(userId));
         comment.setTimestamp(new Date());
         return ResponseEntity.ok(sService.addComment(id, comment));
     }
