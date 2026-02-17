@@ -6,6 +6,8 @@ services:
     container_name: group-mongodb
     ports:
       - "27018:27017"
+    environment:
+      MONGO_INITDB_DATABASE: group_db
     volumes:
       - group-mongo-data:/data/db
     restart: unless-stopped

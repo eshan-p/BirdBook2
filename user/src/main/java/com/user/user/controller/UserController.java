@@ -179,6 +179,14 @@ public class UserController {
         return ResponseEntity.ok("Friend removed successfully");
     }
 
+    @PutMapping("/{id}/groups/{groupId}")
+    public ResponseEntity<String> addGroup(@PathVariable String id, @PathVariable String groupId) {
+        ObjectId userId = new ObjectId(id);
+        ObjectId groupIdObj = new ObjectId(groupId);
+        userService.addGroup(userId, groupIdObj);
+        return new ResponseEntity<String>("Group added successfully", HttpStatus.OK);
+    }
+
     /*@PutMapping("/update/{id}")
     public ResponseEntity<User> updateUser(@PathVariable String id, @RequestBody User userRequest){
 

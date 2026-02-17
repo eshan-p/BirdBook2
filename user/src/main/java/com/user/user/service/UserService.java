@@ -240,6 +240,16 @@ public List<Map<String, Object>> getTopBirdsThisMonth(ObjectId userId) {
         userDAO.save(user);
     }
 
+    public void addGroup(ObjectId userId, ObjectId groupId) {
+        User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        ObjectId[] currentGroups = user.getGroups();
+        ObjectId[] updatedGroups = new ObjectId[currentGroups.length + 1];
+        System.arraycopy(currentGroups, 0, updatedGroups, 0, currentGroups.length);
+        updatedGroups[currentGroups.length] = groupId;
+        user.setGroups(updatedGroups);
+        userDAO.save(user);
+    }
+
     public void removeFriend(ObjectId userId, ObjectId friendId) {
         User user = userDAO.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));

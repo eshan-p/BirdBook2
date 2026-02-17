@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  user-mongodb:
+    image: mongo:7.0
+    container_name: user-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: user_db
+    volumes:
+      - user-mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  user-mongo-data:

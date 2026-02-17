@@ -1,6 +1,5 @@
 package com.user.user.controller;
 
-import com.user.user.models.Role;
 import com.user.user.models.User;
 import com.user.user.security.JwtUtil;
 import com.user.user.service.UserService;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.authentication.AuthenticationManager;
 
 import java.util.HashMap;
-import java.util.Arrays;
 import java.util.Map;
 
 @CrossOrigin(

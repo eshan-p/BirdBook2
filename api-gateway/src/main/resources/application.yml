@@ -1,0 +1,74 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # User Service Routes
+        - id: user-service
+          uri: lb://user
+          predicates:
+            - Path=/users/**,/auth/**
+          filters:
+            - RewritePath=/(?<segment>.*), /${segment}
+        
+        # Group Service Routes
+        - id: group-service
+          uri: lb://group
+          predicates:
+            - Path=/groups/**
+          filters:
+            - RewritePath=/(?<segment>.*), /${segment}
+        
+        # Bird Service Routes
+        - id: bird-service
+          uri: lb://bird
+          predicates:
+            - Path=/birds/**
+          filters:
+            - RewritePath=/(?<segment>.*), /${segment}
+        
+        # Post/Sighting Service Routes
+        - id: post-service
+          uri: lb://post
+          predicates:
+            - Path=/sightings/**
+          filters:
+            - RewritePath=/(?<segment>.*), /${segment}
+      
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway,health,info

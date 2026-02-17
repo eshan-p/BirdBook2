@@ -1,11 +1,23 @@
 server:
-  port: 8080 # Port for the client application
+  port: 8085
+
 spring:
   application:
     name: user
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/user_db
+      database: user_db
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 eureka:
   client:
     fetch-registry: true
     register-with-eureka: true
     service-url:
-      defaultZone: http://localhost:8761/eureka/ # Address of the Eureka Server
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

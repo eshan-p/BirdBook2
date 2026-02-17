@@ -11,6 +11,7 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.birdbook.group.client.UserClient;
 import com.birdbook.group.models.Group;
 import com.birdbook.group.models.PostUser;
 import com.birdbook.group.repository.GroupDAO;
@@ -19,9 +20,11 @@ import com.birdbook.group.repository.GroupDAO;
 public class GroupService {
 
     private final GroupDAO groupDAO;
+    private final UserClient userClient;
 
-    public GroupService(GroupDAO groupDAO) {
+    public GroupService(GroupDAO groupDAO, UserClient userClient) {
         this.groupDAO = groupDAO;
+        this.userClient = userClient;
     }
 
     public List<Group> getAllGroups() {
@@ -38,7 +41,12 @@ public class GroupService {
             String imagePath = saveImage(imageFile);
             newGroup.setImage(imagePath);
         }
-        return groupDAO.save(newGroup);
+        Group savedGroup = groupDAO.save(newGroup);
+        ObjectId userId = savedGroup.getOwner().getUserId();
+        
+        userClient.addGroup(userId.toHexString(), savedGroup.getId().toHexString());
+        
+        return savedGroup;
     }
 
     public Group updateGroup(ObjectId groupId, Group updatedData) {
