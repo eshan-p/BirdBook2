@@ -1,16 +1,25 @@
 version: '3.8'
-
 services:
+  group-service:
+    build: .
+    container_name: group-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - group-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://group-mongodb:27017/groups_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://host.docker.internal:8761/eureka/
+
   group-mongodb:
-    image: mongo:7.0
+    image: mongo:latest
     container_name: group-mongodb
     ports:
-      - "27018:27017"
+      - "27020:27017"
     environment:
-      MONGO_INITDB_DATABASE: group_db
+      MONGO_INITDB_DATABASE: groups_db
     volumes:
-      - group-mongo-data:/data/db
-    restart: unless-stopped
+      - group-data:/data/db
 
 volumes:
-  group-mongo-data:
+  group-data:

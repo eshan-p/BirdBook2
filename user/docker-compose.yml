@@ -1,16 +1,25 @@
 version: '3.8'
-
 services:
+  user-service:
+    build: .
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - user-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://user-mongodb:27017/users_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://host.docker.internal:8761/eureka/
+
   user-mongodb:
-    image: mongo:7.0
+    image: mongo:latest
     container_name: user-mongodb
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: user_db
+      MONGO_INITDB_DATABASE: users_db
     volumes:
-      - user-mongo-data:/data/db
-    restart: unless-stopped
+      - user-data:/data/db
 
 volumes:
-  user-mongo-data:
+  user-data:

@@ -1,12 +1,12 @@
 server:
-  port: 8081
+  port: 8084
 
 spring:
   application:
     name: group
   data:
     mongodb:
-      uri: mongodb://localhost:27018/group_db
+      uri: mongodb://localhost:27020/group_db
       database: group_db
   servlet:
     multipart:

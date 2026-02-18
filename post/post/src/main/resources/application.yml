@@ -1,8 +1,15 @@
 server:
-  port: 8080 # Port for the client application
+  port: 8083 # Port for the client application
 spring:
   application:
     name: post
+  mongodb:
+    uri: mongodb://localhost:27019/post_db
+    database: post_db
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 eureka:
   client:
     fetch-registry: true

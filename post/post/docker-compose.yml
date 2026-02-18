@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  post-service:
+    build: .
+    container_name: post-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - post-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://post-mongodb:27017/posts_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://host.docker.internal:8761/eureka/
+
+  post-mongodb:
+    image: mongo:latest
+    container_name: post-mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_DATABASE: posts_db
+    volumes:
+      - post-data:/data/db
+
+volumes:
+  post-data:

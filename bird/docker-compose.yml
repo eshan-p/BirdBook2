@@ -1,10 +1,21 @@
 version: '3.8'
 services:
+  bird-service:
+    build: .
+    container_name: bird-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - bird-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://bird-mongodb:27017/birds_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://host.docker.internal:8761/eureka/
+
   bird-mongodb:
     image: mongo:latest
     container_name: bird-mongodb
     ports:
-      - "27019:27017"
+      - "27018:27017"
     environment:
       MONGO_INITDB_DATABASE: birds_db
     volumes:

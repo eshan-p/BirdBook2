@@ -1,0 +1,140 @@
+services:  
+ # Discovery Server
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices-network
+
+  # API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservices-network
+
+  # User Service + Database
+  user-service:
+    build: ./user
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka-server
+      - user-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://user-mongodb:27017/users_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservices-network
+
+  user-mongodb:
+    image: mongo:latest
+    container_name: user-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: users_db
+    volumes:
+      - user-data:/data/db
+    networks:
+      - microservices-network
+
+  # Bird Service + Database
+  bird-service:
+    build: ./bird
+    container_name: bird-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - bird-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://bird-mongodb:27017/birds_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservices-network
+
+  bird-mongodb:
+    image: mongo:latest
+    container_name: bird-mongodb
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_DATABASE: birds_db
+    volumes:
+      - bird-data:/data/db
+    networks:
+      - microservices-network
+
+  # Post Service + Database
+  post-service:
+    build: ./post/post
+    container_name: post-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka-server
+      - post-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://post-mongodb:27017/posts_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservices-network
+
+  post-mongodb:
+    image: mongo:latest
+    container_name: post-mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_DATABASE: posts_db
+    volumes:
+      - post-data:/data/db
+    networks:
+      - microservices-network
+
+  # Group Service + Database
+  group-service:
+    build: ./group
+    container_name: group-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - group-mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://group-mongodb:27017/groups_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservices-network
+
+  group-mongodb:
+    image: mongo:latest
+    container_name: group-mongodb
+    ports:
+      - "27020:27017"
+    environment:
+      MONGO_INITDB_DATABASE: groups_db
+    volumes:
+      - group-data:/data/db
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  user-data:
+  bird-data:
+  post-data:
+  group-data:
