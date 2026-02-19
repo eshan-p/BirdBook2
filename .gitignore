@@ -41,3 +41,4 @@ backend/images/
 !backend/images/default_pfp.jpg
 backend_profile_pictures/
 !backend_profile_pictures/default_pfp.jpg
+.env

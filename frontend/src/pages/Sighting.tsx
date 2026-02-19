@@ -16,6 +16,7 @@ import { getUserById } from '../api/Users';
 import { User } from '../types/User';
 import { isBasicUser,isAdmin,isSuperUser, canPerformAction, Role } from '../utils/roleUtils';
 import PostFormCard from '../components/common/PostFormCard';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 function Sighting() {
   //grabs params from the current url
@@ -227,7 +228,7 @@ useEffect(() => {
         <div className='w-full bg-white p-6 drop-shadow mb-6'>
           {/* User Info */}
           <div className='flex flex-row mb-4'>
-            <ProfileIcon size="md" src={post.user?.profilePic ? `http://localhost:8080${post.user.profilePic}` : undefined}/>
+            <ProfileIcon size="md" src={resolveMediaUrl(post.user?.profilePic) || undefined}/>
             <div className='h-14 w-full ml-3'>
               <h3 className='font-bold text-base'>{post.user ? post.user.username : "Unknown user"}</h3>
               {locationLabel && <p className='text-sm/3 opacity-85'>{locationLabel}</p>}
@@ -245,7 +246,7 @@ useEffect(() => {
           {post.image && (
             <div className='mb-4'>
               <img 
-                src={`http://localhost:8080${post.image}`} 
+                src={resolveMediaUrl(post.image)} 
                 alt={post.header} 
                 className='w-full rounded-lg object-cover max-h-96'
               />
@@ -289,7 +290,7 @@ useEffect(() => {
             <h3 className='text-lg font-bold mb-3'>Add a Comment</h3>
             <form onSubmit={handleCommentSubmit}>
               <div className='flex items-start gap-3'>
-                <ProfileIcon size="sm" src={user?.profilePic ? `http://localhost:8080${user.profilePic}` : undefined}/>
+                <ProfileIcon size="sm" src={resolveMediaUrl(user?.profilePic) || undefined}/>
                 <div className='flex-1'>
                   <textarea
                     value={newComment}
@@ -382,7 +383,7 @@ function CommentItem({ comment }: { comment: Comment }) {
   return (
     <div className='border-l-2 border-gray-200 pl-4 py-2'>
       <div className='flex items-start mb-2'>
-        <ProfileIcon size="sm" src={comment.user?.profilePic ? `http://localhost:8080${comment.user.profilePic}` : undefined}/>
+        <ProfileIcon size="sm" src={resolveMediaUrl(comment.user?.profilePic) || undefined}/>
         <div className='ml-3 flex-1'>
           <div className='flex items-baseline gap-2'>
             <span className='font-semibold text-sm'>

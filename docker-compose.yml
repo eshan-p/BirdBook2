@@ -33,6 +33,14 @@ services:
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://user-mongodb:27017/users_db
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_PROFILE_PREFIX=${AWS_S3_PROFILE_PREFIX:-profile_pictures}
+    volumes:
+      - ./images:/app/images
+      - ./images/profile_pictures:/app/profile_pictures
     networks:
       - microservices-network
 
@@ -60,6 +68,13 @@ services:
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://bird-mongodb:27017/birds_db
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BIRD_PREFIX=${AWS_S3_BIRD_PREFIX:-birds}
+    volumes:
+      - ./images:/app/images
     networks:
       - microservices-network
 
@@ -87,6 +102,13 @@ services:
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://post-mongodb:27017/posts_db
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_POST_PREFIX=${AWS_S3_POST_PREFIX:-images}
+    volumes:
+      - ./images:/app/images
     networks:
       - microservices-network
 

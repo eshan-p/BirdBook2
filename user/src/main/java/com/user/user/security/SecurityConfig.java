@@ -47,6 +47,18 @@ public class SecurityConfig {
                 // PUBLIC - User registration
                 .requestMatchers(HttpMethod.POST, "/users").permitAll()
 
+                // PUBLIC - Read-only user lookups for inter-service calls
+                .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
+
+                // PUBLIC - Static media
+                .requestMatchers(HttpMethod.GET, "/images/**", "/profile_pictures/**", "/backend_profile_pictures/**").permitAll()
+
+                // PUBLIC - Internal service callback used by group-service
+                .requestMatchers(HttpMethod.PUT, "/users/*/groups/*").permitAll()
+
+                // PUBLIC - Internal service callback used by post-service
+                .requestMatchers(HttpMethod.PUT, "/users/*/posts/*").permitAll()
+
                 // AUTHENTICATED - Everything else in User Service
                 .anyRequest().authenticated()
             )

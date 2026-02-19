@@ -1,10 +1,7 @@
 package com.user.user.service;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -16,12 +13,18 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.time.*;
 
-import javax.imageio.ImageIO;
-
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import com.user.user.models.Bird;
 import com.user.user.models.Group;
@@ -41,13 +44,31 @@ public class UserService {
     private final PostDAO postDAO;
     private final BirdDAO birdDAO;
     private final PasswordEncoder passwordEncoder;
+    private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
+    private final String bucketName;
+    private final String profilePrefix;
 
-    public UserService(UserDAO userDAO, PostDAO postDAO, BirdDAO birdDAO, PasswordEncoder passwordEncoder, GroupDAO groupDAO){
+    public UserService(
+            UserDAO userDAO,
+            PostDAO postDAO,
+            BirdDAO birdDAO,
+            PasswordEncoder passwordEncoder,
+            GroupDAO groupDAO,
+            S3Client s3Client,
+            S3Presigner s3Presigner,
+            @Value("${aws.s3.bucket:}") String bucketName,
+            @Value("${aws.s3.profile-prefix:profile_pictures}") String profilePrefix
+    ) {
         this.groupDAO = groupDAO;
         this.userDAO = userDAO;
         this.postDAO = postDAO;
         this.birdDAO = birdDAO;
         this.passwordEncoder = passwordEncoder;
+        this.s3Client = s3Client;
+        this.s3Presigner = s3Presigner;
+        this.bucketName = bucketName;
+        this.profilePrefix = profilePrefix;
     }
 
     public void completeOnboarding(String userId, String firstName, String lastName, String location, MultipartFile profilePhoto) {
@@ -59,8 +80,9 @@ public class UserService {
             user.setLocation(location);
             user.setOnboardingComplete(true);
             if(profilePhoto != null && !profilePhoto.isEmpty()){
-                String imagePath = saveProfilePhoto(profilePhoto);
-                user.setProfilePic(imagePath);
+                deleteProfileImageIfManaged(user.getProfilePic());
+                String imageKey = uploadProfileImageToS3(profilePhoto);
+                user.setProfilePic(imageKey);
             }
             userDAO.save(user);
         } catch(IOException e) {
@@ -68,25 +90,17 @@ public class UserService {
         }
     }
 
-    private String saveProfilePhoto(MultipartFile photoFile) throws IOException {
-        String uploadDir = "images/profile_pictures";
-        Files.createDirectories(Paths.get(uploadDir));
-        String fileName = UUID.randomUUID() + "_" + photoFile.getOriginalFilename();
-        Path filePath = Paths.get(uploadDir, fileName);
-        Files.copy(photoFile.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        return "/" + uploadDir + "/" + fileName;
-    }
-
     public List<User> getAllUsers() {
-        return userDAO.findAll();
+        return userDAO.findAll().stream().map(this::withResolvedProfilePic).toList();
     }
 
     public Optional<User> getByUsername(String username) {
-        return userDAO.findByUsername(username);
+        return userDAO.findByUsername(username).map(this::withResolvedProfilePic);
     }
 
     public User getUserById(ObjectId id){
-        return userDAO.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = userDAO.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return withResolvedProfilePic(user);
     }
 
     public List<User> searchUsersByUsername(String query) {
@@ -94,6 +108,7 @@ public class UserService {
         
         return allUsers.stream()
             .filter(user -> user.getUsername().toLowerCase().contains(query.toLowerCase()))
+            .map(this::withResolvedProfilePic)
             .collect(Collectors.toList());
     }
 
@@ -195,19 +210,23 @@ public List<Map<String, Object>> getTopBirdsThisMonth(ObjectId userId) {
         }
 
         if (imageFile != null && !imageFile.isEmpty()) {
-            String imagePath = saveImage(imageFile);
-            existingUser.setProfilePic(imagePath);
+            deleteProfileImageIfManaged(existingUser.getProfilePic());
+            try {
+                String imageKey = uploadProfileImageToS3(imageFile);
+                existingUser.setProfilePic(imageKey);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to store profile image", e);
+            }
         }
 
-        return userDAO.save(existingUser);
+        return withResolvedProfilePic(userDAO.save(existingUser));
     }
 
     public void deleteUser(ObjectId id){
+        User existingUser = userDAO.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("User not found."));
 
-        if (!userDAO.existsById(id)){
-            throw new IllegalArgumentException("User not found.");
-        }
-
+        deleteProfileImageIfManaged(existingUser.getProfilePic());
         userDAO.deleteById(id);
     }
 
@@ -229,7 +248,7 @@ public List<Map<String, Object>> getTopBirdsThisMonth(ObjectId userId) {
 
     public void addFriend(ObjectId userId, ObjectId friendId) {
         User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found."));
-        User friend = userDAO.findById(friendId).orElseThrow(() -> new IllegalArgumentException("Friend not found."));
+        userDAO.findById(friendId).orElseThrow(() -> new IllegalArgumentException("Friend not found."));
 
         ObjectId[] currentFriends = user.getFriends();
         ObjectId[] updatedFriends = new ObjectId[currentFriends.length + 1];
@@ -247,6 +266,16 @@ public List<Map<String, Object>> getTopBirdsThisMonth(ObjectId userId) {
         System.arraycopy(currentGroups, 0, updatedGroups, 0, currentGroups.length);
         updatedGroups[currentGroups.length] = groupId;
         user.setGroups(updatedGroups);
+        userDAO.save(user);
+    }
+
+    public void addPost(ObjectId userId, ObjectId postId) {
+        User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        ObjectId[] currentPosts = user.getPosts();
+        ObjectId[] updatedPosts = new ObjectId[currentPosts.length + 1];
+        System.arraycopy(currentPosts, 0, updatedPosts, 0, currentPosts.length);
+        updatedPosts[currentPosts.length] = postId;
+        user.setPosts(updatedPosts);
         userDAO.save(user);
     }
 
@@ -268,39 +297,99 @@ public List<Map<String, Object>> getTopBirdsThisMonth(ObjectId userId) {
         User user = userDAO.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found."));
         ObjectId[] friendIds = user.getFriends();
 
-        return userDAO.findAllById(List.of(friendIds));
+        return userDAO.findAllById(List.of(friendIds)).stream().map(this::withResolvedProfilePic).toList();
     } 
-    
-    // Helper method to save profile picture as JPG; returns the file path
-    private String saveImage(MultipartFile imageFile){
+
+    private String uploadProfileImageToS3(MultipartFile imageFile) throws IOException {
+        requireS3Configured();
+
+        String cleanPrefix = profilePrefix == null ? "profile_pictures" : profilePrefix.trim();
+        if (cleanPrefix.isEmpty()) {
+            cleanPrefix = "profile_pictures";
+        }
+
+        String originalFileName = imageFile.getOriginalFilename() == null
+                ? "image"
+                : imageFile.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
+
+        String objectKey = cleanPrefix + "/" + UUID.randomUUID() + "_" + originalFileName;
+        String contentType = imageFile.getContentType() == null
+                ? "application/octet-stream"
+                : imageFile.getContentType();
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(
+                putObjectRequest,
+                RequestBody.fromInputStream(imageFile.getInputStream(), imageFile.getSize())
+        );
+
+        return objectKey;
+    }
+
+    private User withResolvedProfilePic(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        String profilePic = user.getProfilePic();
+        if (profilePic == null || profilePic.isBlank()) {
+            return user;
+        }
+
+        if (profilePic.startsWith("http://") || profilePic.startsWith("https://") || profilePic.startsWith("/")) {
+            return user;
+        }
+
         try {
-            String uploadDir = "profile_pictures";
-            Files.createDirectories(Paths.get(uploadDir));
+            requireS3Configured();
 
-            String fileName = UUID.randomUUID() + ".jpg";
-            Path filePath = Paths.get(uploadDir, fileName);
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(profilePic)
+                    .build();
 
-            BufferedImage image = ImageIO.read(imageFile.getInputStream());
-            
-            if (image == null) {
-                throw new IOException("Unable to read image file");
-            }
+            GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofHours(1))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
 
-            // Convert to RGB
-            BufferedImage rgbImage = new BufferedImage(
-                image.getWidth(),
-                image.getHeight(),
-                BufferedImage.TYPE_INT_RGB
-            );
-            rgbImage.createGraphics().drawImage(image, 0, 0, null);
+            String presignedUrl = s3Presigner.presignGetObject(getObjectPresignRequest)
+                    .url()
+                    .toExternalForm();
+            user.setProfilePic(presignedUrl);
+        } catch (Exception ignored) {
+        }
 
-            // Save as JPG
-            ImageIO.write(rgbImage, "jpg", filePath.toFile());
+        return user;
+    }
 
-            return "/" + uploadDir + "/" + fileName;
+    private void deleteProfileImageIfManaged(String imageReference) {
+        if (imageReference == null || imageReference.isBlank()) {
+            return;
+        }
+        if (imageReference.startsWith("http://") || imageReference.startsWith("https://") || imageReference.startsWith("/")) {
+            return;
+        }
 
-        } catch (IOException e){
-            throw new RuntimeException("Failed to store image", e);
+        try {
+            requireS3Configured();
+
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(imageReference)
+                    .build());
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void requireS3Configured() {
+        if (bucketName == null || bucketName.isBlank()) {
+            throw new IllegalStateException("S3 bucket is not configured. Set AWS_S3_BUCKET.");
         }
     }
 

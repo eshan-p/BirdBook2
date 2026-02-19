@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { User } from '../types/User';
 import { getUserById } from '../api/Users';
 import { arrayToCoords, reverseCoordsToCityState } from '../utils/geolocation';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 import { addFriend,removeFriend } from '../api/Users';
 
 function OtherProfile() {
@@ -20,9 +21,8 @@ function OtherProfile() {
   const [topBirds, setTopBirds] = useState<any[]>([]); //TODO: make typing more specific
   const navigate = useNavigate();
   const BASE_URL = "http://localhost:8080";
-  const { user, loading, setUser } = useAuth();
+  const { user } = useAuth();
   const [currentUserFull, setCurrentUserFull] = useState<User | null>(null);
-  const isUserReady = Boolean(currentUserFull && userInfo);
   const [currentUserLoading, setCurrentUserLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -238,7 +238,7 @@ setIsFollowing(false);
                 >
                   {post.image ? (
                     <img 
-                      src={`http://localhost:8080${post.image}`}
+                      src={resolveMediaUrl(post.image)}
                       alt={post.header}
                       className='w-full h-full object-cover'
                     />

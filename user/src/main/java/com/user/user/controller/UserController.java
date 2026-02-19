@@ -183,6 +183,14 @@ public class UserController {
         return new ResponseEntity<String>("Group added successfully", HttpStatus.OK);
     }
 
+    @PutMapping("/{id}/posts/{postId}")
+    public ResponseEntity<String> addPost(@PathVariable String id, @PathVariable String postId) {
+        ObjectId userId = new ObjectId(id);
+        ObjectId postIdObj = new ObjectId(postId);
+        userService.addPost(userId, postIdObj);
+        return new ResponseEntity<String>("Post added successfully", HttpStatus.OK);
+    }
+
     /*@PutMapping("/update/{id}")
     public ResponseEntity<User> updateUser(@PathVariable String id, @RequestBody User userRequest){
 

@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getUserById } from '../../api/Users';
 import { User } from '../../types/User';
 import { isBasicUser, isSuperUser,isAdmin } from '../../utils/roleUtils';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 function Header() {
   const navigate = useNavigate();
@@ -94,7 +95,7 @@ function Header() {
           >
             <div className='flex gap-2 items-center text-base font-medium text-gray-700 px-4 py-1 border border-gray-300 rounded-lg hover:bg-gray-50'>
               <h2>{userData?.username}</h2>
-              <ProfileIcon size='sm' src={userData?.profilePic ? `http://localhost:8080${userData.profilePic}` : undefined}/>
+              <ProfileIcon size='sm' src={resolveMediaUrl(userData?.profilePic) || undefined}/>
             </div>
           </button>
         ) : (

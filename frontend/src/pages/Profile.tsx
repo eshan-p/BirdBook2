@@ -14,6 +14,7 @@ import { Badge } from '../types/Badge';
 import { BADGES, getUnlockedBadges } from '../utils/badgeUtils';
 import { BadgesDisplay } from '../components/common/BadgesDisplay';
 import { Toast } from '../components/common/Toast';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 function Profile() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -100,7 +101,7 @@ function Profile() {
       <div className='basis-2/3 m-6'>
         <div className='bg-white h-fit w-full p-4 drop-shadow flex flex-col'>
             <div className='flex flex-row py-8 border-b border-gray-300 mb-3 px-3'>
-                <ProfileIcon size="lg" src={userInfo?.profilePic ? `http://localhost:8080${userInfo.profilePic}` : undefined}/>
+                <ProfileIcon size="lg" src={resolveMediaUrl(userInfo?.profilePic) || undefined}/>
                 <div>
                     <div className='flex flex-row mb-2'>
                       <h2 className='text-xl mt-1 ml-4 mr-3'>{userInfo.firstName} {userInfo.lastName}</h2>
@@ -159,7 +160,7 @@ function Profile() {
                 >
                   {post.image ? (
                     <img 
-                      src={`http://localhost:8080${post.image}`}
+                      src={resolveMediaUrl(post.image)}
                       alt={post.header}
                       className='w-full h-full object-cover'
                     />

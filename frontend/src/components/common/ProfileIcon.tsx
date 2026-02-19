@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { defaultProfilePicUrl, resolveMediaUrl } from '../../utils/mediaUrl';
 
 type Sizes = 'sm' | 'md' | 'lg';
 
@@ -10,12 +11,10 @@ interface ProfileIconProps {
 }
 
 function ProfileIcon({ size, src, userId, clickable = false }: ProfileIconProps) {
-  const defaultPic = "http://localhost:8080/profile_pictures/default_pfp.jpg";
-  const BASE_URL = "http://localhost:8080";
-  let imageSrc = defaultPic;
+  let imageSrc = defaultProfilePicUrl();
   
   if (src && src.trim() !== "") {
-    imageSrc = src.startsWith("/") ? `${BASE_URL}${src}` : src;
+    imageSrc = resolveMediaUrl(src);
   }
   
   const sizeClasses = {

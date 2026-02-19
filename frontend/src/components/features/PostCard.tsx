@@ -7,6 +7,7 @@ import { Post } from '../../types/Post';
 import { getSightings } from '../../api/Sightings';
 import { User } from '../../types/User';
 import { getUserById } from '../../api/Users';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 interface PostCardProps {
   description: string;
@@ -103,7 +104,7 @@ useEffect(() => {
       {image && (
         <div className='mt-3'>
           <img 
-            src={`http://localhost:8080${image}`} 
+            src={resolveMediaUrl(image)} 
             alt={description} 
             className='w-full rounded-lg object-cover max-h-96'
           />

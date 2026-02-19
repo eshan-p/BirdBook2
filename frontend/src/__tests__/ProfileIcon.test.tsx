@@ -14,17 +14,17 @@ describe('ProfileIcon Component', () => {
     const img = screen.getByAltText('profile');
     expect(img).toHaveAttribute(
       'src',
-      'http://localhost:8080/profile_pictures/default_pfp.jpg'
+      '/profile_pictures/default_pfp.jpg'
     );
   });
 
-  test('should render custom profile picture with BASE_URL prepended', () => {
+  test('should render custom profile picture path', () => {
     const customPic = '/images/profile_pictures/user123.jpg';
     render(<ProfileIcon size="md" src={customPic} />);
     const img = screen.getByAltText('profile');
     expect(img).toHaveAttribute(
       'src',
-      `http://localhost:8080${customPic}`
+      customPic
     );
   });
 

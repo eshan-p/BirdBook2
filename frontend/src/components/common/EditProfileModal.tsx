@@ -1,12 +1,19 @@
 import React, { ChangeEvent, useState } from 'react'
 import { User } from '../../types/User'
+import { resolveApiUrl, resolveMediaUrl } from '../../utils/mediaUrl'
 
 function EditProfileModal({user, onClose, onSave} : {user: User, onClose: () => void, onSave: (arg0: User) => void}) {
   const [firstName, setFirstName] = useState(user.firstName || '');
   const [lastName, setLastName] = useState(user.lastName || '');
-  const [location, setLocation] = useState(user.location || '');
+  const [location, setLocation] = useState(
+    typeof user.location === 'string'
+      ? user.location
+      : (user.location
+          ? `${user.location.latitude},${user.location.longitude}`
+          : '')
+  );
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState(user.profilePic ? `http://localhost:8080${user.profilePic}` : '');
+  const [previewUrl, setPreviewUrl] = useState(resolveMediaUrl(user.profilePic));
   const [loading, setLoading] = useState(false);
 
   const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -21,15 +28,27 @@ function EditProfileModal({user, onClose, onSave} : {user: User, onClose: () => 
 
   const handleSubmit = async () => {
     setLoading(true);
+
+    const userPayload = {
+      username: user.username,
+      firstName,
+      lastName,
+      location,
+      profilePic: user.profilePic,
+      role: user.role,
+      posts: user.posts ?? [],
+      groups: user.groups ?? [],
+      friends: user.friends ?? [],
+    };
+
     const formData = new FormData();
-    formData.append('firstName', firstName);
-    formData.append('lastName', lastName);
-    formData.append('location', location);
+    formData.append('user', JSON.stringify(userPayload));
     if (profilePhoto) {
-        formData.append('profilePhoto', profilePhoto);
+      formData.append('image', profilePhoto);
     }
+
     try{
-        const response = await fetch(`http://localhost:8080/users/${user.id}`, {
+        const response = await fetch(resolveApiUrl(`/users/${user.id}`), {
             method: 'PATCH',
             credentials: 'include',
             body: formData
@@ -38,6 +57,9 @@ function EditProfileModal({user, onClose, onSave} : {user: User, onClose: () => 
         if(response.ok){
             onSave(await response.json());
             onClose();
+      } else {
+        const message = await response.text();
+        console.error(`Failed to update profile: ${response.status} ${message}`);
         }
     } catch (err) {
         console.error("Failed to update profile: " + err);

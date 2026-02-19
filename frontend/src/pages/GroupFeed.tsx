@@ -33,6 +33,7 @@ import { Friend } from '../types/Friend'
 import GroupCard from '../components/features/GroupCard'
 import { isAdmin } from '../utils/roleUtils'
 import { arrayToCoords, reverseCoordsToCityState } from '../utils/geolocation'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 const PAGE_SIZE = 5;
 
@@ -390,7 +391,7 @@ function GroupFeed() {
                   {joinRequests.map((request) => (
                     <li key={request.userId} className='flex items-center justify-between p-2 bg-gray-50 rounded'>
                       <div className='flex items-center gap-2'>
-                        <ProfileIcon size="sm" src={request.profilePic ? `http://localhost:8080${request.profilePic}` : undefined} />
+                        <ProfileIcon size="sm" src={resolveMediaUrl(request.profilePic) || undefined} />
                         <span className='text-sm truncate'>{request.username}</span>
                       </div>
                       <div className='flex gap-1'>
@@ -429,7 +430,7 @@ function GroupFeed() {
                         className='flex items-center gap-2 cursor-pointer flex-1'
                         onClick={() => member.userId && navigate(`/profile/${member.userId}`)}
                       >
-                        <ProfileIcon size="sm" src={member.profilePic ? `http://localhost:8080${member.profilePic}` : undefined} />
+                        <ProfileIcon size="sm" src={resolveMediaUrl(member.profilePic) || undefined} />
                         <span className='truncate'>{member.username || 'Unknown User'}</span>
                       </div>
                       {isOwner && member.userId !== group.owner.userId && (

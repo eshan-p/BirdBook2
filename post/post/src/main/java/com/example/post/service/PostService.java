@@ -6,17 +6,23 @@ import com.example.post.models.Post;
 import com.example.post.models.User;
 import com.example.post.repository.PostDAO;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,11 +32,27 @@ public class PostService {
     private final PostDAO sDAO;
     private final UserService userService;
     private final MongoTemplate mongoTemplate;
+    private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
+    private final String bucketName;
+    private final String postPrefix;
 
-    public PostService(PostDAO sDAO, UserService userService, MongoTemplate mongoTemplate) {
+    public PostService(
+            PostDAO sDAO,
+            UserService userService,
+            MongoTemplate mongoTemplate,
+            S3Client s3Client,
+            S3Presigner s3Presigner,
+            @Value("${aws.s3.bucket:}") String bucketName,
+            @Value("${aws.s3.post-prefix:images}") String postPrefix
+    ) {
         this.sDAO = sDAO;
         this.userService = userService;
         this.mongoTemplate = mongoTemplate;
+        this.s3Client = s3Client;
+        this.s3Presigner = s3Presigner;
+        this.bucketName = bucketName;
+        this.postPrefix = postPrefix;
     }
 
     private List<Post> postsWithBirdLookup(List<Post> posts) {
@@ -52,7 +74,7 @@ public class PostService {
             Post.class
         );
 
-        return results.getMappedResults();
+        return withResolvedPostImages(results.getMappedResults());
     }
 
     // Just for testing Spring Boot, can be removed later
@@ -60,7 +82,7 @@ public class PostService {
         Optional<Post> post = sDAO.findById(id);
         if (post.isPresent()) {
             List<Post> enriched = postsWithBirdLookup(List.of(post.get()));
-            return enriched.isEmpty() ? post : Optional.of(enriched.get(0));
+            return enriched.isEmpty() ? post.map(this::withResolvedPostImage) : Optional.of(enriched.get(0));
         }
         return post;
     }
@@ -74,6 +96,8 @@ public class PostService {
     }
 
     public void deletePostById(ObjectId id){
+        Optional<Post> existingPost = sDAO.findById(id);
+        existingPost.ifPresent(post -> deletePostImageIfManaged(post.getImage()));
         sDAO.deleteById(id);
     }
 
@@ -106,7 +130,8 @@ public class PostService {
 
         // Handle image file if provided
         if (imageFile != null && !imageFile.isEmpty()) {
-            String imagePath = saveImage(imageFile);
+            deletePostImageIfManaged(existingPost.getImage());
+            String imagePath = uploadImageToS3(imageFile);
             existingPost.setImage(imagePath);
         }
 
@@ -118,7 +143,7 @@ public class PostService {
     public Post createPost(Post newPost, MultipartFile imageFile) {
         // Handle image file if provided
         if (imageFile != null && !imageFile.isEmpty()) {
-            String imagePath = saveImage(imageFile);
+            String imagePath = uploadImageToS3(imageFile);
             newPost.setImage(imagePath);
         }
 
@@ -133,21 +158,103 @@ public class PostService {
         return enriched.isEmpty() ? savedPost : enriched.get(0);
     }
 
-    // Helper method to save image file for adding/updating a post; returns the file path
-    private String saveImage(MultipartFile imageFile){
+    private String uploadImageToS3(MultipartFile imageFile){
         try {
-            String uploadDir = "images";
-            Files.createDirectories(Paths.get(uploadDir));
+            requireS3Configured();
 
-            String fileName = UUID.randomUUID() + "_" + imageFile.getOriginalFilename();
-            Path filePath = Paths.get(uploadDir, fileName);
+            String cleanPrefix = postPrefix == null ? "images" : postPrefix.trim();
+            if (cleanPrefix.isEmpty()) {
+                cleanPrefix = "images";
+            }
 
-            Files.copy(imageFile.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            String originalFileName = imageFile.getOriginalFilename() == null
+                    ? "image"
+                    : imageFile.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
+            String objectKey = cleanPrefix + "/" + UUID.randomUUID() + "_" + originalFileName;
+            String contentType = imageFile.getContentType() == null
+                    ? "application/octet-stream"
+                    : imageFile.getContentType();
 
-            return "/" + uploadDir + "/" + fileName;
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(
+                    putObjectRequest,
+                    RequestBody.fromInputStream(imageFile.getInputStream(), imageFile.getSize())
+            );
+
+            return objectKey;
 
         } catch (IOException e){
             throw new RuntimeException("Failed to store image", e);
+        }
+    }
+
+    private List<Post> withResolvedPostImages(List<Post> posts) {
+        if (posts == null || posts.isEmpty()) {
+            return posts;
+        }
+        return posts.stream().map(this::withResolvedPostImage).toList();
+    }
+
+    private Post withResolvedPostImage(Post post) {
+        if (post == null || post.getImage() == null || post.getImage().isBlank()) {
+            return post;
+        }
+
+        String imageReference = post.getImage();
+        if (imageReference.startsWith("http://") || imageReference.startsWith("https://") || imageReference.startsWith("/")) {
+            return post;
+        }
+
+        try {
+            requireS3Configured();
+
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(imageReference)
+                    .build();
+
+            GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofHours(1))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            String presignedUrl = s3Presigner.presignGetObject(getObjectPresignRequest)
+                    .url()
+                    .toExternalForm();
+            post.setImage(presignedUrl);
+        } catch (Exception ignored) {
+        }
+
+        return post;
+    }
+
+    private void deletePostImageIfManaged(String imageReference) {
+        if (imageReference == null || imageReference.isBlank()) {
+            return;
+        }
+        if (imageReference.startsWith("http://") || imageReference.startsWith("https://") || imageReference.startsWith("/")) {
+            return;
+        }
+
+        try {
+            requireS3Configured();
+
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(imageReference)
+                    .build());
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void requireS3Configured() {
+        if (bucketName == null || bucketName.isBlank()) {
+            throw new IllegalStateException("S3 bucket is not configured. Set AWS_S3_BUCKET.");
         }
     }
 

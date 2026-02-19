@@ -1,6 +1,7 @@
 import ProfileIcon from "../common/ProfileIcon";
 import { User } from "../../types/User";
 import { Friend } from "../../types/Friend";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 type FriendCardProps =
   | { user: User; friend?: never }
@@ -15,7 +16,7 @@ function FriendCard(props: FriendCardProps) {
     const user = props.user;
 
     name = user.username;
-    profilePhoto = user.profilePic ? `http://localhost:8080${user.profilePic}` : undefined;
+    profilePhoto = user.profilePic ? resolveMediaUrl(user.profilePic) : undefined;
     subText = `${user.friends?.length || 0} friends`;
   } else {
     const friend = props.friend;
