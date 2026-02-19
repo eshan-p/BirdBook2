@@ -26,17 +26,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
     }
 
-    //  SKIP JWT FOR PUBLIC ROUTES
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
         return path.startsWith("/auth/")
-            || (path.equals("/users") && method.equals("POST"))
-            || (path.startsWith("/sightings") && method.equals("GET"))
-            
-            || (path.startsWith("/api/birds") && method.equals("GET"));
+            || (path.equals("/users") && method.equals("POST"));
+        // Remove rules for /sightings and /api/birds - those aren't in User Service!
     }
 
     @Override

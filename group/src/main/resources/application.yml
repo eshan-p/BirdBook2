@@ -6,8 +6,7 @@ spring:
     name: group
   data:
     mongodb:
-      uri: mongodb://localhost:27020/group_db
-      database: group_db
+      uri: mongodb://group-mongodb:27017/groups_db
   servlet:
     multipart:
       max-file-size: 10MB

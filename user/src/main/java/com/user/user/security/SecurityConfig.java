@@ -18,9 +18,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -35,76 +32,24 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // JWT = STATELESS
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
             .authorizeHttpRequests(auth -> auth
                 // Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // AUTH / PUBLIC
+                // PUBLIC - Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
+                
+                // PUBLIC - User registration
+                .requestMatchers(HttpMethod.POST, "/users").permitAll()
 
-                // STATIC FILES
-                .requestMatchers("/images/**").permitAll()
-                .requestMatchers("/profile_pictures/**").permitAll()
-                .requestMatchers("/backend_profile_pictures/**").permitAll()
-
-                // ==============================
-                // PUBLIC READ-ONLY ROUTES
-                // ==============================
-
-                // Sightings
-                .requestMatchers(HttpMethod.GET, "/sightings/**").permitAll()
-
-                // Birds (legacy + API)
-                .requestMatchers(HttpMethod.GET, "/birds/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/birds").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/birds/**").permitAll()
-
-                // ==============================
-                // AUTHENTICATED ROUTES
-                // ==============================
-
-                .requestMatchers("/groups/**").authenticated()
-                .requestMatchers("/search/**").authenticated()
-                .requestMatchers("/users/**").authenticated()
-
-                // Sightings WRITE
-                .requestMatchers(HttpMethod.POST, "/sightings/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.PUT, "/sightings/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.PATCH, "/sightings/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.DELETE, "/sightings/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-
-                // Birds WRITE
-                .requestMatchers(HttpMethod.POST, "/api/birds/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.PUT, "/api/birds/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.PATCH, "/api/birds/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-                .requestMatchers(HttpMethod.DELETE, "/api/birds/**")
-                    .hasAnyRole("BASIC_USER", "ADMIN_USER", "SUPER_USER")
-
-                // ADMIN
-                .requestMatchers("/admin/**")
-                    .hasAnyRole("ADMIN_USER", "SUPER_USER")
-
-                // EVERYTHING ELSE
+                // AUTHENTICATED - Everything else in User Service
                 .anyRequest().authenticated()
             )
-
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -120,22 +65,6 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
     }
 
     @Bean

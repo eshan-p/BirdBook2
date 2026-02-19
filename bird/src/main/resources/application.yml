@@ -4,7 +4,7 @@ spring:
   application:
     name: bird
   mongodb:
-    uri: mongodb://localhost:27018/birds_db
+    uri: mongodb://bird-mongodb:27017/birds_db
 eureka:
   client:
     fetch-registry: true

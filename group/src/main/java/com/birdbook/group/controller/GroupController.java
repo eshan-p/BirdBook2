@@ -22,12 +22,7 @@ import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 
-@CrossOrigin(
-    origins = "http://localhost:5173",
-    allowCredentials = "true"
-)
 @RestController
 @RequestMapping("/groups")
 public class GroupController {
@@ -50,7 +45,6 @@ public class GroupController {
 
     @GetMapping("/{id}")
     public Group getGroup(@PathVariable String id) {
-        
         ObjectId groupObjId = new ObjectId(id);
         return groupService.getGroupById(groupObjId);
     }
@@ -65,15 +59,6 @@ public class GroupController {
         return groupService.getGroupMembers(new ObjectId(groupId));
     }
 
-    /*
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN_USER') or hasRole('SUPER_USER')")
-    public ResponseEntity<String> createGroup(@RequestParam String name, @RequestParam String ownerId) {
-        PostUser owner = puService.buildPostUser(new ObjectId(ownerId));
-        groupService.createGroup(name, owner);
-        return ResponseEntity.status(HttpStatus.CREATED).body("Group created successfully");
-    }
-    */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createGroup(
         @RequestPart("group") String groupJson,
@@ -98,7 +83,6 @@ public class GroupController {
     }
 
     @PostMapping("/{groupId}/join-requests")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> requestToJoin(
             @PathVariable String groupId,
             @RequestParam String userId
@@ -109,7 +93,6 @@ public class GroupController {
     }
 
     @PutMapping("/{groupId}/join-requests/{userId}/approve")
-    @PreAuthorize("hasRole('ADMIN_USER') or hasRole('SUPER_USER')")
     public ResponseEntity<String> approveJoin(
             @PathVariable String groupId,
             @PathVariable String userId
@@ -120,18 +103,14 @@ public class GroupController {
     }
 
     @PutMapping("/{groupId}/join-requests/{userId}/deny")
-    @PreAuthorize("hasRole('ADMIN_USER') or hasRole('SUPER_USER')")
     public ResponseEntity<String> denyJoinRequest(@PathVariable String groupId, @PathVariable String userId) {
-
         ObjectId groupObjId = new ObjectId(groupId);
         ObjectId userObjId = new ObjectId(userId);
         groupService.denyJoinRequest(puService.buildPostUser(userObjId), groupObjId);
-
         return new ResponseEntity<String>("Join request denied successfully", HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateGroup(
             @PathVariable String id, 
             @RequestBody Group groupRequest,
@@ -151,7 +130,6 @@ public class GroupController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteGroup(
             @PathVariable String id,
             @RequestParam String userId
@@ -170,9 +148,7 @@ public class GroupController {
     }
 
     @DeleteMapping("/{groupId}/members/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> leaveGroup(@PathVariable String groupId, @PathVariable String userId) {
-        
         ObjectId groupObjId = new ObjectId(groupId);
         ObjectId userObjId = new ObjectId(userId);
         groupService.removeGroupMember(userObjId, groupObjId);
@@ -180,7 +156,6 @@ public class GroupController {
     }
 
     @DeleteMapping("/{groupId}/members/{userId}/remove")
-    @PreAuthorize("hasRole('ADMIN_USER') or hasRole('SUPER_USER')")
     public ResponseEntity<String> removeMember(
             @PathVariable String groupId, 
             @PathVariable String userId

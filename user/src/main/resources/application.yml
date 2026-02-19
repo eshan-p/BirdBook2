@@ -6,7 +6,7 @@ spring:
     name: user
   data:
     mongodb:
-      uri: mongodb://localhost:27017/user_db
+      uri: mongodb://user-mongodb:27017/users_db
       database: user_db
   servlet:
     multipart:
